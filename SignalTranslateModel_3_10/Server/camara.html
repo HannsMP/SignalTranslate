@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Camera Capture</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            padding: 0;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        .content {
+            width: 700px;
+            height: 500px;
+            display: grid;
+            grid-template-columns: 320px 320px;
+            grid-row: auto auto;
+            gap: 10px
+        }
+
+        img,
+        video,
+        canvas {
+            width: 320px;
+            height: 240px;
+            border: 2px solid #ccc;
+        }
+
+        .controls {
+            margin-top: 20px;
+        }
+
+        button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Detección de manos</h1>
+    <div class="content">
+        <video id="videoRes" autoplay></video>
+        <canvas id="videoCanvas" style="display: none"></canvas>
+        <img id="imgCanvas">
+        <img id="imgPipe">
+    </div>
+    <div class="controls">
+        <label for="intervalInput">Intervalo (ms): </label>
+        <input type="number" id="intervalInput" value="100">
+        <button id="startBtn">Start</button>
+        <button id="pauseBtn">Pause</button>
+        <button id="stopBtn">Stop</button>
+    </div>
+    <script>
+        class CameraCapture {
+            constructor(videoElement, canvasElement, imgCanvasElement, imgPipeElement, intervalInput) {
+                this.videoElement = videoElement;
+                this.canvasElement = canvasElement;
+                this.imgCanvasElement = imgCanvasElement;
+                this.imgPipeElement = imgPipeElement;
+                this.intervalInput = intervalInput;
+                this.context = canvasElement.getContext('2d');
+                this.width = videoElement.width = canvasElement.width = imgPipeElement.width = 640;
+                this.height = videoElement.height = canvasElement.height = imgPipeElement.height = 480;
+                this.intervalId = null;
+                this.isPaused = false;
+            }
+
+            async setupCamera() {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                this.videoElement.srcObject = stream;
+            }
+
+            startCapture() {
+                const intervalTime = parseInt(this.intervalInput.value);
+                if (this.intervalId) {
+                    clearInterval(this.intervalId);
+                }
+
+                this.intervalId = setInterval(() => {
+                    if (!this.isPaused) {
+                        this.context.drawImage(this.videoElement, 0, 0, this.width, this.height);
+                        let imageData = this.canvasElement.toDataURL('image/jpeg');
+                        this.imgCanvasElement.src = imageData;
+
+                        this.sendFrame(imageData);
+                    }
+                }, intervalTime);
+            }
+
+            pauseCapture() {
+                this.isPaused = true;
+            }
+
+            resumeCapture() {
+                this.isPaused = false;
+            }
+
+            stopCapture() {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+                this.isPaused = false;
+            }
+
+            sendFrame(imageData) {
+                fetch('/process_frame', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: imageData })
+                })
+                .then(res => res.json())
+                .then(json => this.imgPipeElement.src = json.image);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoRes = document.getElementById('videoRes');
+            const canvas = document.getElementById('videoCanvas');
+            const imgCanvas = document.getElementById('imgCanvas');
+            const imgPipe = document.getElementById('imgPipe');
+            const intervalInput = document.getElementById('intervalInput');
+
+            const cameraCapture = new CameraCapture(videoRes, canvas, imgCanvas, imgPipe, intervalInput);
+            cameraCapture.setupCamera();
+
+            document.getElementById('startBtn').addEventListener('click', () => cameraCapture.startCapture());
+            document.getElementById('pauseBtn').addEventListener('click', () => {
+                if (cameraCapture.isPaused) {
+                    cameraCapture.resumeCapture();
+                } else {
+                    cameraCapture.pauseCapture();
+                }
+            });
+            document.getElementById('stopBtn').addEventListener('click', () => cameraCapture.stopCapture());
+        });
+    </script>
+</body>
+
+</html>

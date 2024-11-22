@@ -1,0 +1,18 @@
+subf = {
+  "-acanto": 1,
+  "-bia": 1,
+  "-bio": 1,
+  "-cardio": 1,
+  "-céfala": 1,
+  "-céfalo": 1,
+  "-cito": 1,
+  "-dáctilo": 1,
+  "-dermo": 1,
+  "-ferro": 1,
+  "-fita": 1,
+  "-fito": 1,
+  "-lito": 1,
+  "-morfa": 1,
+  "-morfo": 1,
+  "-zoo": 1,
+}
